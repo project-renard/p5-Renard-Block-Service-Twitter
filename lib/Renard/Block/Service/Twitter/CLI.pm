@@ -15,26 +15,6 @@ use CLI::Osprey;
 
 option url => ( is => 'ro', format => 's', required => 1 );
 
-
-lazy url_name => method() {
-	(URI->new( $self->url )->path_segments)[-3];
-};
-
-lazy url_id => method() {
-	(URI->new( $self->url )->path_segments)[-1];
-};
-
-lazy stream_container_scraper => method() {
-	scraper {
-		process '//div[contains(@class,"stream-container")]',
-			'max_position' => '@data-max-position',
-			'min_position' => '@data-min-position';
-	};
-};
-		#process 'article', 'articles[]' => scraper {
-			#process "div", text => 'TEXT';
-		#};
-
 lazy user_agent => method() {
 	WWW::Mechanize::Chrome->new(
 		port => 9090,
@@ -125,7 +105,7 @@ lazy uri_set => method() {
 };
 
 method run() {
-	my $me   = $self->client->verify_credentials;
+	#my $me   = $self->client->verify_credentials;
 	#my $user = $self->client->show_user('twitter');
 	#use DDP; p $user;
 	#my $status = $self->client->lookup_statuses('1202663202997170176', { tweet_mode => 'extended' } );
@@ -177,33 +157,6 @@ method run() {
 	# $x("//div[@id='permalink-overlay']")[0].scrollBy(0,document.body.scrollHeight + 200)
 
 	#require Carp::REPL; Carp::REPL->import('repl'); repl();#DEBUG
-}
-
-method conversation_uri( $min_position ) {
-	my $conversation_uri = "https://twitter.com/i/@{[ $self->url_name ]}/conversation/@{[ $self->url_id ]}?include_available_features=1&include_entities=1&max_position=@{[ $min_position ]}&reset_error_state=false";
-}
-
-method temp() {
-	my $data = $self->stream_container_scraper->scrape( $self->user_agent->response );
-	$data->{has_more_items} = 1;
-	$data->{html} = $self->user_agent->content;
-
-	use HTML::FormatText;
-	use HTML::TreeBuilder;
-	use HTML::TreeBuilder::XPath;
-	my $formatter = HTML::FormatText->new(leftmargin => 0, rightmargin => 200);
-	while( $data->{has_more_items} ) {
-		my $html = $data->{html};
-		my $tree = HTML::TreeBuilder::XPath->new_from_content( $html );
-		print $formatter->format($tree);
-
-		$self->user_agent->get( $self->conversation_uri( $data->{min_position} ) );
-		my $json_r = decode_json( $self->user_agent->content );
-
-		$data->{html} = $json_r->{items_html};
-		$data->{min_position} = $json_r->{min_position};
-		$data->{has_more_items} = $json_r->{has_more_items};
-	}
 }
 
 1;
